@@ -1,6 +1,6 @@
 # Go JSON Rules Engine
 
-A powerful and flexible rules engine for Go that allows you to define, evaluate, and manage business rules using JSON.
+A flexible and powerful rules engine for Go that allows you to define business rules using JSON configuration.
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/tuannguyensn2001/go-json-rule-engine)](https://goreportcard.com/report/github.com/tuannguyensn2001/go-json-rule-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,13 +8,12 @@ A powerful and flexible rules engine for Go that allows you to define, evaluate,
 
 ## Features
 
-- Define rules using JSON
-- Support for complex conditions (AND/OR logic)
-- Rich set of operators (equal, notEqual, greaterThan, lessThan, in, contains, regex, etc.)
-- Custom operator support
-- Type-safe evaluation
-- Thread-safe operations
-- Extensible architecture
+- Define complex business rules using JSON
+- Support for nested logical conditions (AND/OR)
+- Multiple comparison operators
+- Priority-based rule evaluation
+- Event-driven results with custom parameters
+- Easy integration with existing Go applications
 
 ## Installation
 
@@ -22,222 +21,177 @@ A powerful and flexible rules engine for Go that allows you to define, evaluate,
 go get github.com/tuannguyensn2001/go-json-rule-engine
 ```
 
-## Usage Examples
+## Quick Start
 
-### 1. Basic Rule Evaluation
+Here's a simple example showing how to use the rules engine:
 
 ```go
 package main
 
 import (
     "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine"
+    go_json_rules_engine "github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
     // Create a new engine
     eng := go_json_rules_engine.NewEngine()
 
-    // Define rules
-    rules := []go_json_rules_engine.RuleOption{
+    // Create rules using JSON
+    rules := go_json_rules_engine.NewRules()
+    jsonStr := `[
         {
-            ID:       "age-check",
-            Name:     "Adult Check",
-            Priority: 1,
-            Conditions: go_json_rules_engine.ConditionGroup{
-                Operator: go_json_rules_engine.And,
-                Conditions: []interface{}{
-                    go_json_rules_engine.Condition{
-                        Fact:     "age",
-                        Operator: go_json_rules_engine.GreaterThan,
-                        Value:    18,
+            "id": "premium-customer",
+            "name": "Premium Customer Rule",
+            "priority": 10,
+            "conditions": {
+                "operator": "and",
+                "conditions": [
+                    {
+                        "fact": "age",
+                        "operator": "greaterThanInclusive",
+                        "value": 21
                     },
-                },
+                    {
+                        "fact": "yearlyPurchases",
+                        "operator": "greaterThan",
+                        "value": 1000.0
+                    }
+                ]
             },
-            Event: go_json_rules_engine.Event{
-                Type: "adult",
-                Params: map[string]interface{}{
-                    "message": "User is an adult",
-                },
-            },
-        },
+            "event": {
+                "type": "premium-eligible",
+                "params": {
+                    "message": "Customer is eligible for premium status",
+                    "discount": 20
+                }
+            }
+        }
+    ]`
+    
+    if err := rules.LoadRulesFromJSONString(jsonStr); err != nil {
+        panic(err)
     }
 
-    // Evaluate facts
+    // Define facts to evaluate
     facts := map[string]interface{}{
-        "age": 25,
+        "age":             25,
+        "yearlyPurchases": 1200.0,
     }
 
+    // Evaluate rules
     events, err := eng.Evaluate(rules, facts)
     if err != nil {
         panic(err)
     }
 
-    // Handle events
+    // Handle results
     for _, event := range events {
-        fmt.Printf("Event: %s\n", event.Type)
-        fmt.Printf("Message: %s\n", event.Params["message"])
+        fmt.Printf("Rule triggered: %s\n", event.Type)
+        fmt.Printf("Message: %v\n", event.Params["message"])
+        fmt.Printf("Discount: %v%%\n", event.Params["discount"])
     }
 }
 ```
 
-### 2. Complex Rules with Multiple Conditions
+## Rule Structure
 
-```go
-package main
+Rules are defined in JSON with the following structure:
 
-import (
-    "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine"
-)
-
-func main() {
-    eng := go_json_rules_engine.NewEngine()
-
-    // Define a complex rule for customer eligibility
-    rules := []go_json_rules_engine.RuleOption{
-        {
-            ID:       "customer-eligibility",
-            Name:     "Premium Customer Eligibility",
-            Priority: 10,
-            Conditions: go_json_rules_engine.ConditionGroup{
-                Operator: go_json_rules_engine.And,
-                Conditions: []interface{}{
-                    go_json_rules_engine.Condition{
-                        Fact:     "age",
-                        Operator: go_json_rules_engine.GreaterThanInc,
-                        Value:    21,
-                    },
-                    go_json_rules_engine.ConditionGroup{
-                        Operator: go_json_rules_engine.Or,
-                        Conditions: []interface{}{
-                            go_json_rules_engine.Condition{
-                                Fact:     "yearlyPurchases",
-                                Operator: go_json_rules_engine.GreaterThan,
-                                Value:    1000.0,
-                            },
-                            go_json_rules_engine.Condition{
-                                Fact:     "membershipLevel",
-                                Operator: go_json_rules_engine.In,
-                                Value:    []interface{}{"gold", "platinum"},
-                            },
-                        },
-                    },
-                },
-            },
-            Event: go_json_rules_engine.Event{
-                Type: "premium-eligible",
-                Params: map[string]interface{}{
-                    "message":  "Customer is eligible for premium status",
-                    "discount": 20,
-                },
-            },
-        },
-    }
-
-    // Test with different customer profiles
-    testCases := []map[string]interface{}{
-        {
-            "age":             25,
-            "yearlyPurchases": 1200.0,
-            "membershipLevel": "silver",
-        },
-        {
-            "age":             20,
-            "yearlyPurchases": 800.0,
-            "membershipLevel": "gold",
-        },
-    }
-
-    for i, facts := range testCases {
-        fmt.Printf("\nTesting Case %d:\n", i+1)
-        events, err := eng.Evaluate(rules, facts)
-        if err != nil {
-            panic(err)
+```json
+{
+    "id": "rule-id",
+    "name": "Rule Name",
+    "priority": 10,
+    "conditions": {
+        "operator": "and|or",
+        "conditions": [
+            {
+                "fact": "factName",
+                "operator": "operatorType",
+                "value": "compareValue"
+            }
+        ]
+    },
+    "event": {
+        "type": "eventType",
+        "params": {
+            "key": "value"
         }
-
-        if len(events) > 0 {
-            fmt.Printf("Customer is eligible!\n")
-            fmt.Printf("Discount: %v%%\n", events[0].Params["discount"])
-        } else {
-            fmt.Printf("Customer is not eligible\n")
-        }
-    }
-}
-```
-
-### 3. Custom Operators
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine"
-)
-
-func main() {
-    eng := go_json_rules_engine.NewEngine()
-
-    // Register a custom operator
-    err := eng.RegisterCustomOperator("divisibleBy", func(a, b interface{}) bool {
-        // Implementation of divisibleBy operator
-        return true
-    })
-    if err != nil {
-        panic(err)
-    }
-
-    // Use the custom operator in a rule
-    rules := []go_json_rules_engine.RuleOption{
-        {
-            ID:       "divisible-check",
-            Name:     "Divisible Check",
-            Priority: 1,
-            Conditions: go_json_rules_engine.ConditionGroup{
-                Operator: go_json_rules_engine.And,
-                Conditions: []interface{}{
-                    go_json_rules_engine.Condition{
-                        Fact:     "number",
-                        Operator: "divisibleBy",
-                        Value:    5,
-                    },
-                },
-            },
-            Event: go_json_rules_engine.Event{
-                Type: "divisible",
-                Params: map[string]interface{}{
-                    "message": "Number is divisible by 5",
-                },
-            },
-        },
-    }
-
-    // Evaluate with test data
-    facts := map[string]interface{}{
-        "number": 10,
-    }
-
-    events, err := eng.Evaluate(rules, facts)
-    if err != nil {
-        panic(err)
-    }
-
-    for _, event := range events {
-        fmt.Printf("Event: %s\n", event.Type)
-        fmt.Printf("Message: %s\n", event.Params["message"])
     }
 }
 ```
 
 ## Supported Operators
 
-- `equal` / `notEqual`
-- `greaterThan` / `lessThan`
-- `greaterThanInclusive` / `lessThanInclusive`
-- `in` / `notIn`
-- `regex`
-- `isNull` / `isNotNull`
+The engine supports these comparison operators:
+
+- `equal` - Exact match
+- `notEqual` - Not equal to
+- `greaterThan` - Greater than
+- `lessThan` - Less than
+- `greaterThanInclusive` - Greater than or equal to
+- `lessThanInclusive` - Less than or equal to
+- `in` - Value exists in array
+- `notIn` - Value does not exist in array
+- `regex` - Matches regular expression
+- `isNull` - Value is null
+- `isNotNull` - Value is not null
+
+## Advanced Features
+
+### Priority-based Evaluation
+
+Rules are evaluated in order of priority (higher numbers first). This allows you to control the execution order of your rules:
+
+```json
+[
+    {
+        "id": "high-priority",
+        "priority": 100,
+        "conditions": { ... }
+    },
+    {
+        "id": "low-priority",
+        "priority": 1,
+        "conditions": { ... }
+    }
+]
+```
+
+### Nested Conditions
+
+You can create complex rule conditions by nesting AND/OR operators:
+
+```json
+{
+    "conditions": {
+        "operator": "and",
+        "conditions": [
+            {
+                "fact": "age",
+                "operator": "greaterThanInclusive",
+                "value": 21
+            },
+            {
+                "operator": "or",
+                "conditions": [
+                    {
+                        "fact": "yearlyPurchases",
+                        "operator": "greaterThan",
+                        "value": 1000.0
+                    },
+                    {
+                        "fact": "membershipLevel",
+                        "operator": "in",
+                        "value": ["gold", "platinum"]
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
 
 ## Contributing
 
