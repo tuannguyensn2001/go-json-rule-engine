@@ -1,0 +1,42 @@
+[
+  {
+    "id": "customer-eligibility",
+    "name": "Premium Customer Eligibility",
+    "priority": 10,
+    "conditions": {
+      "operator": "and",
+      "conditions": [
+        {
+          "fact": "age",
+          "operator": "greaterThanInclusive",
+          "value": 21
+        },
+        {
+          "operator": "or",
+          "conditions": [
+            {
+              "fact": "yearlyPurchases",
+              "operator": "greaterThan",
+              "value": 1000
+            },
+            {
+              "fact": "membershipLevel",
+              "operator": "in",
+              "value": [
+                "gold",
+                "platinum"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "event": {
+      "type": "premium-eligible",
+      "params": {
+        "discount": 20,
+        "message": "Customer is eligible for premium status"
+      }
+    }
+  }
+]
