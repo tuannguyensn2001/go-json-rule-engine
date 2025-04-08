@@ -22,7 +22,9 @@ A powerful and flexible rules engine for Go that allows you to define, evaluate,
 go get github.com/tuannguyensn2001/go-json-rule-engine
 ```
 
-## Quick Start
+## Usage Examples
+
+### 1. Basic Rule Evaluation
 
 ```go
 package main
@@ -30,60 +32,43 @@ package main
 import (
     "fmt"
     "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
-    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/types"
 )
 
 func main() {
     // Create a new engine
     eng := engine.NewEngine()
 
-    // Create a rule
-    rule := types.Rule{
-        ID:       "customer-eligibility",
-        Name:     "Premium Customer Eligibility",
-        Priority: 10,
-        Conditions: types.ConditionGroup{
-            Operator: types.And,
-            Conditions: []interface{}{
-                types.Condition{
-                    Fact:     "age",
-                    Operator: types.GreaterThanInc,
-                    Value:    21,
-                },
-                types.ConditionGroup{
-                    Operator: types.Or,
-                    Conditions: []interface{}{
-                        types.Condition{
-                            Fact:     "yearlyPurchases",
-                            Operator: types.GreaterThan,
-                            Value:    1000.0,
-                        },
-                        types.Condition{
-                            Fact:     "membershipLevel",
-                            Operator: types.In,
-                            Value:    []interface{}{"gold", "platinum"},
-                        },
-                    },
-                },
-            },
+    // Define a simple rule: If age > 18, then adult
+    rule := `{
+        "id": "age-check",
+        "name": "Adult Check",
+        "priority": 1,
+        "conditions": {
+            "operator": "and",
+            "conditions": [
+                {
+                    "fact": "age",
+                    "operator": "greaterThan",
+                    "value": 18
+                }
+            ]
         },
-        Event: types.Event{
-            Type: "premium-eligible",
-            Params: map[string]interface{}{
-                "message":  "Customer is eligible for premium status",
-                "discount": 20,
-            },
-        },
-    }
+        "event": {
+            "type": "adult",
+            "params": {
+                "message": "User is an adult"
+            }
+        }
+    }`
 
-    // Add rule to engine
-    eng.AddRule(rule)
+    // Load the rule
+    if err := eng.LoadRulesFromJSONString(rule); err != nil {
+        panic(err)
+    }
 
     // Evaluate facts
     facts := map[string]interface{}{
-        "age":             25,
-        "yearlyPurchases": 1200.0,
-        "membershipLevel": "gold",
+        "age": 25,
     }
 
     events, err := eng.Evaluate(facts)
@@ -93,51 +78,171 @@ func main() {
 
     // Handle events
     for _, event := range events {
-        fmt.Printf("Rule triggered: %s\n", event.Type)
+        fmt.Printf("Event: %s\n", event.Type)
         fmt.Printf("Message: %s\n", event.Params["message"])
-        fmt.Printf("Discount: %v%%\n", event.Params["discount"])
     }
 }
 ```
 
-## Rule JSON Format
+### 2. Complex Rules with Multiple Conditions
 
-```json
-{
-    "id": "rule-id",
-    "name": "Rule Name",
-    "priority": 10,
-    "conditions": {
-        "operator": "and",
-        "conditions": [
-            {
-                "fact": "age",
-                "operator": "greaterThanInclusive",
-                "value": 21
-            },
-            {
-                "operator": "or",
-                "conditions": [
-                    {
-                        "fact": "yearlyPurchases",
-                        "operator": "greaterThan",
-                        "value": 1000.0
-                    },
-                    {
-                        "fact": "membershipLevel",
-                        "operator": "in",
-                        "value": ["gold", "platinum"]
-                    }
-                ]
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+)
+
+func main() {
+    eng := engine.NewEngine()
+
+    // Define a complex rule for customer eligibility
+    rule := `{
+        "id": "customer-eligibility",
+        "name": "Premium Customer Eligibility",
+        "priority": 10,
+        "conditions": {
+            "operator": "and",
+            "conditions": [
+                {
+                    "fact": "age",
+                    "operator": "greaterThanInclusive",
+                    "value": 21
+                },
+                {
+                    "operator": "or",
+                    "conditions": [
+                        {
+                            "fact": "yearlyPurchases",
+                            "operator": "greaterThan",
+                            "value": 1000.0
+                        },
+                        {
+                            "fact": "membershipLevel",
+                            "operator": "in",
+                            "value": ["gold", "platinum"]
+                        }
+                    ]
+                }
+            ]
+        },
+        "event": {
+            "type": "premium-eligible",
+            "params": {
+                "message": "Customer is eligible for premium status",
+                "discount": 20
             }
-        ]
-    },
-    "event": {
-        "type": "premium-eligible",
-        "params": {
-            "message": "Customer is eligible for premium status",
-            "discount": 20
         }
+    }`
+
+    if err := eng.LoadRulesFromJSONString(rule); err != nil {
+        panic(err)
+    }
+
+    // Test with different customer profiles
+    testCases := []map[string]interface{}{
+        {
+            "age":             25,
+            "yearlyPurchases": 1200.0,
+            "membershipLevel": "silver",
+        },
+        {
+            "age":             20,
+            "yearlyPurchases": 800.0,
+            "membershipLevel": "gold",
+        },
+    }
+
+    for i, facts := range testCases {
+        fmt.Printf("\nTesting Case %d:\n", i+1)
+        events, err := eng.Evaluate(facts)
+        if err != nil {
+            panic(err)
+        }
+
+        if len(events) > 0 {
+            fmt.Printf("Customer is eligible!\n")
+            fmt.Printf("Discount: %v%%\n", events[0].Params["discount"])
+        } else {
+            fmt.Printf("Customer is not eligible\n")
+        }
+    }
+}
+```
+
+### 3. Loading Rules from File
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+)
+
+func main() {
+    eng := engine.NewEngine()
+
+    // Load rules from a JSON file
+    if err := eng.LoadRulesFromJSON("rules.json"); err != nil {
+        panic(err)
+    }
+
+    // Save rules to a file
+    if err := eng.SaveRulesToJSON("rules_backup.json"); err != nil {
+        panic(err)
+    }
+}
+```
+
+### 4. Custom Operators
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+)
+
+func main() {
+    eng := engine.NewEngine()
+
+    // Register a custom operator
+    err := eng.RegisterCustomOperator("divisibleBy", func(a, b interface{}) bool {
+        // Implementation of divisibleBy operator
+        return true
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    // Use the custom operator in a rule
+    rule := `{
+        "id": "divisible-check",
+        "name": "Divisible Check",
+        "priority": 1,
+        "conditions": {
+            "operator": "and",
+            "conditions": [
+                {
+                    "fact": "number",
+                    "operator": "divisibleBy",
+                    "value": 5
+                }
+            ]
+        },
+        "event": {
+            "type": "divisible",
+            "params": {
+                "message": "Number is divisible by 5"
+            }
+        }
+    }`
+
+    if err := eng.LoadRulesFromJSONString(rule); err != nil {
+        panic(err)
     }
 }
 ```

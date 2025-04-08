@@ -1,0 +1,20 @@
+[
+  {
+    "id": "",
+    "name": "",
+    "priority": 1,
+    "conditions": {
+      "operator": "and",
+      "conditions": [
+        {
+          "fact": "age",
+          "operator": "gt",
+          "value": 18
+        }
+      ]
+    },
+    "event": {
+      "type": "adult"
+    }
+  }
+]
