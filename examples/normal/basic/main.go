@@ -11,28 +11,28 @@ func main() {
 	eng := go_json_rules_engine.NewEngine()
 
 	// Define rules
-	rules := []go_json_rules_engine.RuleOption{
-		{
-			ID:       "age-check",
-			Name:     "Adult Check",
-			Priority: 1,
-			Conditions: go_json_rules_engine.ConditionGroup{
-				Operator: go_json_rules_engine.And,
-				Conditions: []interface{}{
-					go_json_rules_engine.Condition{
-						Fact:     "age",
-						Operator: go_json_rules_engine.GreaterThan,
-						Value:    18,
-					},
-				},
-			},
-			Event: go_json_rules_engine.Event{
-				Type: "adult",
-				Params: map[string]interface{}{
-					"message": "User is an adult",
-				},
-			},
+	rulesContainer := go_json_rules_engine.NewRules()
+	jsonStr := `[{
+		"id": "age-check",
+		"name": "Adult Check",
+		"priority": 1,
+		"conditions": {
+			"operator": "and",
+			"conditions": [{
+				"fact": "age",
+				"operator": "greaterThan",
+				"value": 18
+			}]
 		},
+		"event": {
+			"type": "adult",
+			"params": {
+				"message": "User is an adult"
+			}
+		}
+	}]`
+	if err := rulesContainer.LoadRulesFromJSONString(jsonStr); err != nil {
+		panic(err)
 	}
 
 	// Evaluate facts
@@ -40,7 +40,7 @@ func main() {
 		"age": 25,
 	}
 
-	events, err := eng.Evaluate(rules, facts)
+	events, err := eng.Evaluate(rulesContainer, facts)
 	if err != nil {
 		panic(err)
 	}

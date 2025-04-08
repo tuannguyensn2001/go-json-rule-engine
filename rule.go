@@ -85,7 +85,7 @@ func (cg *ConditionGroup) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type RuleOption struct {
+type ruleOption struct {
 	ID         string         `json:"id"`
 	Name       string         `json:"name"`
 	Priority   int            `json:"priority"`
@@ -100,16 +100,16 @@ type Event struct {
 }
 
 type Rule struct {
-	opts []RuleOption
+	opts []ruleOption
 }
 
 func NewRules() *Rule {
 	return &Rule{
-		opts: make([]RuleOption, 0),
+		opts: make([]ruleOption, 0),
 	}
 }
 
-func (r *Rule) AddRule(opts RuleOption) {
+func (r *Rule) AddRule(opts ruleOption) {
 	r.opts = append(r.opts, opts)
 }
 
@@ -123,7 +123,7 @@ func (r *Rule) LoadRulesFromJSON(filename string) error {
 }
 
 func (r *Rule) LoadRulesFromJSONString(jsonStr string) error {
-	var rules []RuleOption
+	var rules []ruleOption
 	if err := json.Unmarshal([]byte(jsonStr), &rules); err != nil {
 		return fmt.Errorf("failed to parse rules: %w", err)
 	}
@@ -133,7 +133,7 @@ func (r *Rule) LoadRulesFromJSONString(jsonStr string) error {
 	return nil
 }
 
-func (r *Rule) GetRules() []RuleOption {
+func (r *Rule) GetRules() []ruleOption {
 	return r.opts
 }
 

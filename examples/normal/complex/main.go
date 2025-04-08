@@ -9,72 +9,76 @@ import (
 func main() {
 	eng := go_json_rules_engine.NewEngine()
 
-	// Define a complex rule for customer eligibility
-	rules := []go_json_rules_engine.RuleOption{
+	// Replace the rules definition with:
+	rulesContainer := go_json_rules_engine.NewRules()
+	jsonStr := `[
 		{
-			ID:       "customer-eligibility",
-			Name:     "Premium Customer Eligibility",
-			Priority: 10,
-			Conditions: go_json_rules_engine.ConditionGroup{
-				Operator: go_json_rules_engine.And,
-				Conditions: []interface{}{
-					go_json_rules_engine.Condition{
-						Fact:     "age",
-						Operator: go_json_rules_engine.GreaterThanInc,
-						Value:    21,
+			"id": "customer-eligibility",
+			"name": "Premium Customer Eligibility",
+			"priority": 10,
+			"conditions": {
+				"operator": "and",
+				"conditions": [
+					{
+						"fact": "age",
+						"operator": "greaterThanInclusive",
+						"value": 21
 					},
-					go_json_rules_engine.ConditionGroup{
-						Operator: go_json_rules_engine.Or,
-						Conditions: []interface{}{
-							go_json_rules_engine.Condition{
-								Fact:     "yearlyPurchases",
-								Operator: go_json_rules_engine.GreaterThan,
-								Value:    1000.0,
+					{
+						"operator": "or",
+						"conditions": [
+							{
+								"fact": "yearlyPurchases",
+								"operator": "greaterThan",
+								"value": 1000.0
 							},
-							go_json_rules_engine.Condition{
-								Fact:     "membershipLevel",
-								Operator: go_json_rules_engine.In,
-								Value:    []interface{}{"gold", "platinum"},
-							},
-						},
-					},
-				},
+							{
+								"fact": "membershipLevel",
+								"operator": "in",
+								"value": ["gold", "platinum"]
+							}
+						]
+					}
+				]
 			},
-			Event: go_json_rules_engine.Event{
-				Type: "premium-eligible",
-				Params: map[string]interface{}{
-					"message":  "Customer is eligible for premium status",
-					"discount": 20,
-				},
-			},
+			"event": {
+				"type": "premium-eligible",
+				"params": {
+					"message": "Customer is eligible for premium status",
+					"discount": 20
+				}
+			}
 		},
 		{
-			ID:       "basic-customer",
-			Name:     "Basic Customer Check",
-			Priority: 5,
-			Conditions: go_json_rules_engine.ConditionGroup{
-				Operator: go_json_rules_engine.And,
-				Conditions: []interface{}{
-					go_json_rules_engine.Condition{
-						Fact:     "age",
-						Operator: go_json_rules_engine.GreaterThanInc,
-						Value:    18,
+			"id": "basic-customer",
+			"name": "Basic Customer Check",
+			"priority": 5,
+			"conditions": {
+				"operator": "and",
+				"conditions": [
+					{
+						"fact": "age",
+						"operator": "greaterThanInclusive",
+						"value": 18
 					},
-					go_json_rules_engine.Condition{
-						Fact:     "membershipLevel",
-						Operator: go_json_rules_engine.Equal,
-						Value:    "basic",
-					},
-				},
+					{
+						"fact": "membershipLevel",
+						"operator": "equal",
+						"value": "basic"
+					}
+				]
 			},
-			Event: go_json_rules_engine.Event{
-				Type: "basic-eligible",
-				Params: map[string]interface{}{
-					"message":  "Customer is eligible for basic status",
-					"discount": 5,
-				},
-			},
-		},
+			"event": {
+				"type": "basic-eligible",
+				"params": {
+					"message": "Customer is eligible for basic status",
+					"discount": 5
+				}
+			}
+		}
+	]`
+	if err := rulesContainer.LoadRulesFromJSONString(jsonStr); err != nil {
+		panic(err)
 	}
 
 	// Test with different customer profiles
@@ -98,7 +102,7 @@ func main() {
 
 	for i, facts := range testCases {
 		fmt.Printf("\nTesting Case %d:\n", i+1)
-		events, err := eng.Evaluate(rules, facts)
+		events, err := eng.Evaluate(rulesContainer, facts)
 		if err != nil {
 			panic(err)
 		}

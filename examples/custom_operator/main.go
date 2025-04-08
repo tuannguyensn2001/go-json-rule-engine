@@ -107,7 +107,7 @@ func main() {
 
 	for i, facts := range testCases {
 		fmt.Printf("\nTesting Case %d:\n", i+1)
-		events, err := eng.Evaluate(rules.GetRules(), facts)
+		events, err := eng.Evaluate(rules, facts)
 		if err != nil {
 			panic(err)
 		}

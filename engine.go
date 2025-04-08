@@ -38,10 +38,10 @@ func (e *Engine) UnregisterCustomOperator(op Operator) {
 	delete(e.customOperators, op)
 }
 
-func (e *Engine) Evaluate(rules []RuleOption, facts map[string]interface{}) ([]Event, error) {
+func (e *Engine) Evaluate(rules *Rule, facts map[string]interface{}) ([]Event, error) {
 	var events []Event
 
-	for _, rule := range rules {
+	for _, rule := range rules.GetRules() {
 		if e.evaluateConditionGroup(rule.Conditions, facts) {
 			events = append(events, rule.Event)
 		}
