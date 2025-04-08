@@ -2,46 +2,44 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/types"
+	"github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
 	// Create a new engine
-	eng := engine.NewEngine()
+	eng := go_json_rules_engine.NewEngine()
 
 	// Create a rule programmatically
-	rule := types.Rule{
+	rule := go_json_rules_engine.Rule{
 		ID:       "customer-eligibility",
 		Name:     "Premium Customer Eligibility",
 		Priority: 10,
-		Conditions: types.ConditionGroup{
-			Operator: types.And,
+		Conditions: go_json_rules_engine.ConditionGroup{
+			Operator: go_json_rules_engine.And,
 			Conditions: []interface{}{
-				types.Condition{
+				go_json_rules_engine.Condition{
 					Fact:     "age",
-					Operator: types.GreaterThanInc,
+					Operator: go_json_rules_engine.GreaterThanInc,
 					Value:    21,
 				},
-				types.ConditionGroup{
-					Operator: types.Or,
+				go_json_rules_engine.ConditionGroup{
+					Operator: go_json_rules_engine.Or,
 					Conditions: []interface{}{
-						types.Condition{
+						go_json_rules_engine.Condition{
 							Fact:     "yearlyPurchases",
-							Operator: types.GreaterThan,
+							Operator: go_json_rules_engine.GreaterThan,
 							Value:    1000.0,
 						},
-						types.Condition{
+						go_json_rules_engine.Condition{
 							Fact:     "membershipLevel",
-							Operator: types.In,
+							Operator: go_json_rules_engine.In,
 							Value:    []interface{}{"gold", "platinum"},
 						},
 					},
 				},
 			},
 		},
-		Event: types.Event{
+		Event: go_json_rules_engine.Event{
 			Type: "premium-eligible",
 			Params: map[string]interface{}{
 				"message":  "Customer is eligible for premium status",

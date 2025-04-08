@@ -1,4 +1,4 @@
-package engine
+package go_json_rules_engine
 
 import (
 	"encoding/json"
@@ -8,13 +8,11 @@ import (
 	"regexp"
 	"sort"
 	"sync"
-
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/types"
 )
 
 type Engine struct {
-	rules           []types.Rule
-	customOperators map[types.Operator]CustomOperatorFunc
+	rules           []Rule
+	customOperators map[Operator]CustomOperatorFunc
 	mu              sync.RWMutex
 }
 
@@ -22,12 +20,12 @@ type CustomOperatorFunc func(a, b interface{}) bool
 
 func NewEngine() *Engine {
 	return &Engine{
-		rules:           make([]types.Rule, 0),
-		customOperators: make(map[types.Operator]CustomOperatorFunc),
+		rules:           make([]Rule, 0),
+		customOperators: make(map[Operator]CustomOperatorFunc),
 	}
 }
 
-func (e *Engine) RegisterCustomOperator(op types.Operator, fn CustomOperatorFunc) error {
+func (e *Engine) RegisterCustomOperator(op Operator, fn CustomOperatorFunc) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -39,13 +37,13 @@ func (e *Engine) RegisterCustomOperator(op types.Operator, fn CustomOperatorFunc
 	return nil
 }
 
-func (e *Engine) UnregisterCustomOperator(op types.Operator) {
+func (e *Engine) UnregisterCustomOperator(op Operator) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	delete(e.customOperators, op)
 }
 
-func (e *Engine) AddRule(rule types.Rule) error {
+func (e *Engine) AddRule(rule Rule) error {
 	e.rules = append(e.rules, rule)
 	e.sortRulesByPriority()
 	return nil
@@ -61,7 +59,7 @@ func (e *Engine) LoadRulesFromJSON(filename string) error {
 }
 
 func (e *Engine) LoadRulesFromJSONString(jsonStr string) error {
-	var rules []types.Rule
+	var rules []Rule
 	if err := json.Unmarshal([]byte(jsonStr), &rules); err != nil {
 		return fmt.Errorf("failed to parse rules: %w", err)
 	}
@@ -90,8 +88,8 @@ func (e *Engine) sortRulesByPriority() {
 	})
 }
 
-func (e *Engine) Evaluate(facts map[string]interface{}) ([]types.Event, error) {
-	var events []types.Event
+func (e *Engine) Evaluate(facts map[string]interface{}) ([]Event, error) {
+	var events []Event
 
 	for _, rule := range e.rules {
 		if e.evaluateConditionGroup(rule.Conditions, facts) {
@@ -102,20 +100,20 @@ func (e *Engine) Evaluate(facts map[string]interface{}) ([]types.Event, error) {
 	return events, nil
 }
 
-func (e *Engine) evaluateConditionGroup(group types.ConditionGroup, facts map[string]interface{}) bool {
+func (e *Engine) evaluateConditionGroup(group ConditionGroup, facts map[string]interface{}) bool {
 	if len(group.Conditions) == 0 {
 		return true
 	}
 
 	switch group.Operator {
-	case types.And:
+	case And:
 		for _, condition := range group.Conditions {
 			switch cond := condition.(type) {
-			case types.Condition:
+			case Condition:
 				if !e.evaluateCondition(cond, facts) {
 					return false
 				}
-			case types.ConditionGroup:
+			case ConditionGroup:
 				if !e.evaluateConditionGroup(cond, facts) {
 					return false
 				}
@@ -123,14 +121,14 @@ func (e *Engine) evaluateConditionGroup(group types.ConditionGroup, facts map[st
 		}
 		return true
 
-	case types.Or:
+	case Or:
 		for _, condition := range group.Conditions {
 			switch cond := condition.(type) {
-			case types.Condition:
+			case Condition:
 				if e.evaluateCondition(cond, facts) {
 					return true
 				}
-			case types.ConditionGroup:
+			case ConditionGroup:
 				if e.evaluateConditionGroup(cond, facts) {
 					return true
 				}
@@ -143,7 +141,7 @@ func (e *Engine) evaluateConditionGroup(group types.ConditionGroup, facts map[st
 	}
 }
 
-func (e *Engine) evaluateCondition(condition types.Condition, facts map[string]interface{}) bool {
+func (e *Engine) evaluateCondition(condition Condition, facts map[string]interface{}) bool {
 	factValue, exists := facts[condition.Fact]
 	if !exists {
 		return false
@@ -160,27 +158,27 @@ func (e *Engine) evaluateCondition(condition types.Condition, facts map[string]i
 
 	// Handle built-in operators
 	switch condition.Operator {
-	case types.Equal:
+	case Equal:
 		return e.compareEqual(factValue, condition.Value)
-	case types.NotEqual:
+	case NotEqual:
 		return !e.compareEqual(factValue, condition.Value)
-	case types.GreaterThan:
+	case GreaterThan:
 		return e.compareGreaterThan(factValue, condition.Value)
-	case types.LessThan:
+	case LessThan:
 		return e.compareLessThan(factValue, condition.Value)
-	case types.GreaterThanInc:
+	case GreaterThanInc:
 		return e.compareGreaterThanOrEqual(factValue, condition.Value)
-	case types.LessThanInc:
+	case LessThanInc:
 		return e.compareLessThanOrEqual(factValue, condition.Value)
-	case types.In:
+	case In:
 		return e.evaluateIn(factValue, condition.Value)
-	case types.NotIn:
+	case NotIn:
 		return !e.evaluateIn(factValue, condition.Value)
-	case types.Regex:
+	case Regex:
 		return e.evaluateRegex(factValue, condition.Value)
-	case types.IsNull:
+	case IsNull:
 		return factValue == nil
-	case types.IsNotNull:
+	case IsNotNull:
 		return factValue != nil
 	default:
 		return false

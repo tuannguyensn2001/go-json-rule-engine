@@ -2,18 +2,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/tuannguyensn2001/go-json-rule-engine"
 	"math"
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/types"
 )
 
 func main() {
 	// Create a new engine
-	e := engine.NewEngine()
+	e := go_json_rules_engine.NewEngine()
 
 	// Register custom operators
 	err := e.RegisterCustomOperator("divisibleBy", func(a, b interface{}) bool {
@@ -83,27 +81,27 @@ func main() {
 	}
 
 	// Create rules using custom operators
-	rules := []types.Rule{
+	rules := []go_json_rules_engine.Rule{
 		{
 			ID:       "age-rule",
 			Name:     "Age Check Rule",
 			Priority: 1,
-			Conditions: types.ConditionGroup{
-				Operator: types.And,
+			Conditions: go_json_rules_engine.ConditionGroup{
+				Operator: go_json_rules_engine.And,
 				Conditions: []interface{}{
-					types.Condition{
+					go_json_rules_engine.Condition{
 						Fact:     "age",
 						Operator: "divisibleBy",
 						Value:    5,
 					},
-					types.Condition{
+					go_json_rules_engine.Condition{
 						Fact:     "age",
 						Operator: "olderThan",
 						Value:    18,
 					},
 				},
 			},
-			Event: types.Event{
+			Event: go_json_rules_engine.Event{
 				Type: "ageRuleMatched",
 				Params: map[string]interface{}{
 					"message": "Age requirements met!",
@@ -114,17 +112,17 @@ func main() {
 			ID:       "name-rule",
 			Name:     "Name Check Rule",
 			Priority: 2,
-			Conditions: types.ConditionGroup{
-				Operator: types.And,
+			Conditions: go_json_rules_engine.ConditionGroup{
+				Operator: go_json_rules_engine.And,
 				Conditions: []interface{}{
-					types.Condition{
+					go_json_rules_engine.Condition{
 						Fact:     "name",
 						Operator: "startsWith",
 						Value:    "John",
 					},
 				},
 			},
-			Event: types.Event{
+			Event: go_json_rules_engine.Event{
 				Type: "nameRuleMatched",
 				Params: map[string]interface{}{
 					"message": "Name starts with John!",
@@ -135,17 +133,17 @@ func main() {
 			ID:       "weekend-rule",
 			Name:     "Weekend Check Rule",
 			Priority: 3,
-			Conditions: types.ConditionGroup{
-				Operator: types.And,
+			Conditions: go_json_rules_engine.ConditionGroup{
+				Operator: go_json_rules_engine.And,
 				Conditions: []interface{}{
-					types.Condition{
+					go_json_rules_engine.Condition{
 						Fact:     "date",
 						Operator: "isWeekend",
 						Value:    nil, // Value is not used for this operator
 					},
 				},
 			},
-			Event: types.Event{
+			Event: go_json_rules_engine.Event{
 				Type: "weekendRuleMatched",
 				Params: map[string]interface{}{
 					"message": "It's the weekend!",

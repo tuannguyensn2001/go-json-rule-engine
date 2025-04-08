@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+	"github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
 	// Create a new engine
-	eng := engine.NewEngine()
+	eng := go_json_rules_engine.NewEngine()
 
 	// Load rules from JSON string
 	jsonStr := `[

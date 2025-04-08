@@ -1,6 +1,6 @@
 // Package types provides the core data structures for the JSON rules engine.
 // It defines the types for rules, conditions, and events that are used throughout the engine.
-package types
+package go_json_rules_engine
 
 import (
 	"encoding/json"

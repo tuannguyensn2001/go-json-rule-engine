@@ -1,11 +1,10 @@
-package engine
+package go_json_rules_engine
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/types"
 )
 
 func TestNewEngine(t *testing.T) {
@@ -17,19 +16,19 @@ func TestNewEngine(t *testing.T) {
 
 func TestAddRule(t *testing.T) {
 	engine := NewEngine()
-	rule := types.Rule{
+	rule := Rule{
 		Priority: 1,
-		Conditions: types.ConditionGroup{
-			Operator: types.And,
+		Conditions: ConditionGroup{
+			Operator: And,
 			Conditions: []interface{}{
-				types.Condition{
+				Condition{
 					Fact:     "age",
-					Operator: types.GreaterThan,
+					Operator: GreaterThan,
 					Value:    18,
 				},
 			},
 		},
-		Event: types.Event{
+		Event: Event{
 			Type: "adult",
 		},
 	}
@@ -74,26 +73,26 @@ func TestUnregisterCustomOperator(t *testing.T) {
 func TestEvaluate(t *testing.T) {
 	tests := []struct {
 		name     string
-		rules    []types.Rule
+		rules    []Rule
 		facts    map[string]interface{}
-		expected []types.Event
+		expected []Event
 	}{
 		{
 			name: "Simple age check - match",
-			rules: []types.Rule{
+			rules: []Rule{
 				{
 					Priority: 1,
-					Conditions: types.ConditionGroup{
-						Operator: types.And,
+					Conditions: ConditionGroup{
+						Operator: And,
 						Conditions: []interface{}{
-							types.Condition{
+							Condition{
 								Fact:     "age",
-								Operator: types.GreaterThan,
+								Operator: GreaterThan,
 								Value:    18,
 							},
 						},
 					},
-					Event: types.Event{
+					Event: Event{
 						Type: "adult",
 					},
 				},
@@ -101,7 +100,7 @@ func TestEvaluate(t *testing.T) {
 			facts: map[string]interface{}{
 				"age": 20,
 			},
-			expected: []types.Event{
+			expected: []Event{
 				{
 					Type: "adult",
 				},
@@ -109,25 +108,25 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			name: "Multiple conditions - match",
-			rules: []types.Rule{
+			rules: []Rule{
 				{
 					Priority: 1,
-					Conditions: types.ConditionGroup{
-						Operator: types.And,
+					Conditions: ConditionGroup{
+						Operator: And,
 						Conditions: []interface{}{
-							types.Condition{
+							Condition{
 								Fact:     "age",
-								Operator: types.GreaterThan,
+								Operator: GreaterThan,
 								Value:    18,
 							},
-							types.Condition{
+							Condition{
 								Fact:     "country",
-								Operator: types.Equal,
+								Operator: Equal,
 								Value:    "US",
 							},
 						},
 					},
-					Event: types.Event{
+					Event: Event{
 						Type: "us_adult",
 					},
 				},
@@ -136,7 +135,7 @@ func TestEvaluate(t *testing.T) {
 				"age":     20,
 				"country": "US",
 			},
-			expected: []types.Event{
+			expected: []Event{
 				{
 					Type: "us_adult",
 				},
@@ -144,20 +143,20 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			name: "No matching conditions",
-			rules: []types.Rule{
+			rules: []Rule{
 				{
 					Priority: 1,
-					Conditions: types.ConditionGroup{
-						Operator: types.And,
+					Conditions: ConditionGroup{
+						Operator: And,
 						Conditions: []interface{}{
-							types.Condition{
+							Condition{
 								Fact:     "age",
-								Operator: types.GreaterThan,
+								Operator: GreaterThan,
 								Value:    18,
 							},
 						},
 					},
-					Event: types.Event{
+					Event: Event{
 						Type: "adult",
 					},
 				},
@@ -169,30 +168,30 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			name: "Nested condition groups",
-			rules: []types.Rule{
+			rules: []Rule{
 				{
 					Priority: 1,
-					Conditions: types.ConditionGroup{
-						Operator: types.And,
+					Conditions: ConditionGroup{
+						Operator: And,
 						Conditions: []interface{}{
-							types.ConditionGroup{
-								Operator: types.Or,
+							ConditionGroup{
+								Operator: Or,
 								Conditions: []interface{}{
-									types.Condition{
+									Condition{
 										Fact:     "age",
-										Operator: types.GreaterThan,
+										Operator: GreaterThan,
 										Value:    18,
 									},
-									types.Condition{
+									Condition{
 										Fact:     "country",
-										Operator: types.Equal,
+										Operator: Equal,
 										Value:    "US",
 									},
 								},
 							},
 						},
 					},
-					Event: types.Event{
+					Event: Event{
 						Type: "match",
 					},
 				},
@@ -201,7 +200,7 @@ func TestEvaluate(t *testing.T) {
 				"age":     15,
 				"country": "US",
 			},
-			expected: []types.Event{
+			expected: []Event{
 				{
 					Type: "match",
 				},
@@ -267,96 +266,96 @@ func TestCompareOperators(t *testing.T) {
 		name     string
 		a        interface{}
 		b        interface{}
-		operator types.Operator
+		operator Operator
 		expected bool
 	}{
 		{
 			name:     "Equal - numbers",
 			a:        42,
 			b:        42,
-			operator: types.Equal,
+			operator: Equal,
 			expected: true,
 		},
 		{
 			name:     "Equal - strings",
 			a:        "hello",
 			b:        "hello",
-			operator: types.Equal,
+			operator: Equal,
 			expected: true,
 		},
 		{
 			name:     "NotEqual - numbers",
 			a:        42,
 			b:        43,
-			operator: types.NotEqual,
+			operator: NotEqual,
 			expected: true,
 		},
 		{
 			name:     "GreaterThan - numbers",
 			a:        43,
 			b:        42,
-			operator: types.GreaterThan,
+			operator: GreaterThan,
 			expected: true,
 		},
 		{
 			name:     "LessThan - numbers",
 			a:        41,
 			b:        42,
-			operator: types.LessThan,
+			operator: LessThan,
 			expected: true,
 		},
 		{
 			name:     "In - string in slice",
 			a:        "apple",
 			b:        []interface{}{"banana", "apple", "orange"},
-			operator: types.In,
+			operator: In,
 			expected: true,
 		},
 		{
 			name:     "NotIn - string not in slice",
 			a:        "grape",
 			b:        []interface{}{"banana", "apple", "orange"},
-			operator: types.NotIn,
+			operator: NotIn,
 			expected: true,
 		},
 		{
 			name:     "Regex - matching pattern",
 			a:        "hello123",
 			b:        "^hello\\d+$",
-			operator: types.Regex,
+			operator: Regex,
 			expected: true,
 		},
 		{
 			name:     "IsNull - nil value",
 			a:        nil,
 			b:        nil,
-			operator: types.IsNull,
+			operator: IsNull,
 			expected: true,
 		},
 		{
 			name:     "IsNotNull - non-nil value",
 			a:        "not null",
 			b:        nil,
-			operator: types.IsNotNull,
+			operator: IsNotNull,
 			expected: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rule := types.Rule{
+			rule := Rule{
 				Priority: 1,
-				Conditions: types.ConditionGroup{
-					Operator: types.And,
+				Conditions: ConditionGroup{
+					Operator: And,
 					Conditions: []interface{}{
-						types.Condition{
+						Condition{
 							Fact:     "test",
 							Operator: tt.operator,
 							Value:    tt.b,
 						},
 					},
 				},
-				Event: types.Event{
+				Event: Event{
 					Type: "test",
 				},
 			}
@@ -392,19 +391,19 @@ func TestCustomOperatorIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	rule := types.Rule{
+	rule := Rule{
 		Priority: 1,
-		Conditions: types.ConditionGroup{
-			Operator: types.And,
+		Conditions: ConditionGroup{
+			Operator: And,
 			Conditions: []interface{}{
-				types.Condition{
+				Condition{
 					Fact:     "number",
 					Operator: "is_even",
 					Value:    nil,
 				},
 			},
 		},
-		Event: types.Event{
+		Event: Event{
 			Type: "even_number",
 		},
 	}
