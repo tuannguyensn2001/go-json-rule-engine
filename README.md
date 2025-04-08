@@ -11,9 +11,9 @@ A powerful and flexible rules engine for Go that allows you to define, evaluate,
 - Define rules using JSON
 - Support for complex conditions (AND/OR logic)
 - Rich set of operators (equal, notEqual, greaterThan, lessThan, in, contains, regex, etc.)
-- Rule priorities
-- JSON persistence (save/load rules)
+- Custom operator support
 - Type-safe evaluation
+- Thread-safe operations
 - Extensible architecture
 
 ## Installation
@@ -31,39 +31,36 @@ package main
 
 import (
     "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+    "github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
     // Create a new engine
-    eng := engine.NewEngine()
+    eng := go_json_rules_engine.NewEngine()
 
-    // Define a simple rule: If age > 18, then adult
-    rule := `{
-        "id": "age-check",
-        "name": "Adult Check",
-        "priority": 1,
-        "conditions": {
-            "operator": "and",
-            "conditions": [
-                {
-                    "fact": "age",
-                    "operator": "greaterThan",
-                    "value": 18
-                }
-            ]
+    // Define rules
+    rules := []go_json_rules_engine.RuleOption{
+        {
+            ID:       "age-check",
+            Name:     "Adult Check",
+            Priority: 1,
+            Conditions: go_json_rules_engine.ConditionGroup{
+                Operator: go_json_rules_engine.And,
+                Conditions: []interface{}{
+                    go_json_rules_engine.Condition{
+                        Fact:     "age",
+                        Operator: go_json_rules_engine.GreaterThan,
+                        Value:    18,
+                    },
+                },
+            },
+            Event: go_json_rules_engine.Event{
+                Type: "adult",
+                Params: map[string]interface{}{
+                    "message": "User is an adult",
+                },
+            },
         },
-        "event": {
-            "type": "adult",
-            "params": {
-                "message": "User is an adult"
-            }
-        }
-    }`
-
-    // Load the rule
-    if err := eng.LoadRulesFromJSONString(rule); err != nil {
-        panic(err)
     }
 
     // Evaluate facts
@@ -71,7 +68,7 @@ func main() {
         "age": 25,
     }
 
-    events, err := eng.Evaluate(facts)
+    events, err := eng.Evaluate(rules, facts)
     if err != nil {
         panic(err)
     }
@@ -91,53 +88,51 @@ package main
 
 import (
     "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+    "github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
-    eng := engine.NewEngine()
+    eng := go_json_rules_engine.NewEngine()
 
     // Define a complex rule for customer eligibility
-    rule := `{
-        "id": "customer-eligibility",
-        "name": "Premium Customer Eligibility",
-        "priority": 10,
-        "conditions": {
-            "operator": "and",
-            "conditions": [
-                {
-                    "fact": "age",
-                    "operator": "greaterThanInclusive",
-                    "value": 21
-                },
-                {
-                    "operator": "or",
-                    "conditions": [
-                        {
-                            "fact": "yearlyPurchases",
-                            "operator": "greaterThan",
-                            "value": 1000.0
+    rules := []go_json_rules_engine.RuleOption{
+        {
+            ID:       "customer-eligibility",
+            Name:     "Premium Customer Eligibility",
+            Priority: 10,
+            Conditions: go_json_rules_engine.ConditionGroup{
+                Operator: go_json_rules_engine.And,
+                Conditions: []interface{}{
+                    go_json_rules_engine.Condition{
+                        Fact:     "age",
+                        Operator: go_json_rules_engine.GreaterThanInc,
+                        Value:    21,
+                    },
+                    go_json_rules_engine.ConditionGroup{
+                        Operator: go_json_rules_engine.Or,
+                        Conditions: []interface{}{
+                            go_json_rules_engine.Condition{
+                                Fact:     "yearlyPurchases",
+                                Operator: go_json_rules_engine.GreaterThan,
+                                Value:    1000.0,
+                            },
+                            go_json_rules_engine.Condition{
+                                Fact:     "membershipLevel",
+                                Operator: go_json_rules_engine.In,
+                                Value:    []interface{}{"gold", "platinum"},
+                            },
                         },
-                        {
-                            "fact": "membershipLevel",
-                            "operator": "in",
-                            "value": ["gold", "platinum"]
-                        }
-                    ]
-                }
-            ]
+                    },
+                },
+            },
+            Event: go_json_rules_engine.Event{
+                Type: "premium-eligible",
+                Params: map[string]interface{}{
+                    "message":  "Customer is eligible for premium status",
+                    "discount": 20,
+                },
+            },
         },
-        "event": {
-            "type": "premium-eligible",
-            "params": {
-                "message": "Customer is eligible for premium status",
-                "discount": 20
-            }
-        }
-    }`
-
-    if err := eng.LoadRulesFromJSONString(rule); err != nil {
-        panic(err)
     }
 
     // Test with different customer profiles
@@ -156,7 +151,7 @@ func main() {
 
     for i, facts := range testCases {
         fmt.Printf("\nTesting Case %d:\n", i+1)
-        events, err := eng.Evaluate(facts)
+        events, err := eng.Evaluate(rules, facts)
         if err != nil {
             panic(err)
         }
@@ -171,43 +166,18 @@ func main() {
 }
 ```
 
-### 3. Loading Rules from File
+### 3. Custom Operators
 
 ```go
 package main
 
 import (
     "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
+    "github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
-    eng := engine.NewEngine()
-
-    // Load rules from a JSON file
-    if err := eng.LoadRulesFromJSON("rules.json"); err != nil {
-        panic(err)
-    }
-
-    // Save rules to a file
-    if err := eng.SaveRulesToJSON("rules_backup.json"); err != nil {
-        panic(err)
-    }
-}
-```
-
-### 4. Custom Operators
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/tuannguyensn2001/go-json-rule-engine/pkg/engine"
-)
-
-func main() {
-    eng := engine.NewEngine()
+    eng := go_json_rules_engine.NewEngine()
 
     // Register a custom operator
     err := eng.RegisterCustomOperator("divisibleBy", func(a, b interface{}) bool {
@@ -219,30 +189,43 @@ func main() {
     }
 
     // Use the custom operator in a rule
-    rule := `{
-        "id": "divisible-check",
-        "name": "Divisible Check",
-        "priority": 1,
-        "conditions": {
-            "operator": "and",
-            "conditions": [
-                {
-                    "fact": "number",
-                    "operator": "divisibleBy",
-                    "value": 5
-                }
-            ]
+    rules := []go_json_rules_engine.RuleOption{
+        {
+            ID:       "divisible-check",
+            Name:     "Divisible Check",
+            Priority: 1,
+            Conditions: go_json_rules_engine.ConditionGroup{
+                Operator: go_json_rules_engine.And,
+                Conditions: []interface{}{
+                    go_json_rules_engine.Condition{
+                        Fact:     "number",
+                        Operator: "divisibleBy",
+                        Value:    5,
+                    },
+                },
+            },
+            Event: go_json_rules_engine.Event{
+                Type: "divisible",
+                Params: map[string]interface{}{
+                    "message": "Number is divisible by 5",
+                },
+            },
         },
-        "event": {
-            "type": "divisible",
-            "params": {
-                "message": "Number is divisible by 5"
-            }
-        }
-    }`
+    }
 
-    if err := eng.LoadRulesFromJSONString(rule); err != nil {
+    // Evaluate with test data
+    facts := map[string]interface{}{
+        "number": 10,
+    }
+
+    events, err := eng.Evaluate(rules, facts)
+    if err != nil {
         panic(err)
+    }
+
+    for _, event := range events {
+        fmt.Printf("Event: %s\n", event.Type)
+        fmt.Printf("Message: %s\n", event.Params["message"])
     }
 }
 ```
@@ -253,7 +236,6 @@ func main() {
 - `greaterThan` / `lessThan`
 - `greaterThanInclusive` / `lessThanInclusive`
 - `in` / `notIn`
-- `contains` / `notContains`
 - `regex`
 - `isNull` / `isNotNull`
 

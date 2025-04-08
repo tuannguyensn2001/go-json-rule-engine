@@ -5,6 +5,9 @@ package go_json_rules_engine
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"sort"
 )
 
 // Operator represents the comparison operators that can be used in conditions.
@@ -82,7 +85,7 @@ func (cg *ConditionGroup) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type Rule struct {
+type RuleOption struct {
 	ID         string         `json:"id"`
 	Name       string         `json:"name"`
 	Priority   int            `json:"priority"`
@@ -94,4 +97,48 @@ type Rule struct {
 type Event struct {
 	Type   string                 `json:"type"`
 	Params map[string]interface{} `json:"params,omitempty"`
+}
+
+type Rule struct {
+	opts []RuleOption
+}
+
+func NewRules() *Rule {
+	return &Rule{
+		opts: make([]RuleOption, 0),
+	}
+}
+
+func (r *Rule) AddRule(opts RuleOption) {
+	r.opts = append(r.opts, opts)
+}
+
+func (r *Rule) LoadRulesFromJSON(filename string) error {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read rules file: %w", err)
+	}
+
+	return r.LoadRulesFromJSONString(string(data))
+}
+
+func (r *Rule) LoadRulesFromJSONString(jsonStr string) error {
+	var rules []RuleOption
+	if err := json.Unmarshal([]byte(jsonStr), &rules); err != nil {
+		return fmt.Errorf("failed to parse rules: %w", err)
+	}
+
+	r.opts = rules
+	r.sortRulesByPriority()
+	return nil
+}
+
+func (r *Rule) GetRules() []RuleOption {
+	return r.opts
+}
+
+func (r *Rule) sortRulesByPriority() {
+	sort.Slice(r.opts, func(i, j int) bool {
+		return r.opts[i].Priority > r.opts[j].Priority
+	})
 }

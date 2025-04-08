@@ -2,197 +2,123 @@ package main
 
 import (
 	"fmt"
-	"github.com/tuannguyensn2001/go-json-rule-engine"
-	"math"
-	"reflect"
-	"strings"
-	"time"
+
+	go_json_rules_engine "github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
-	// Create a new engine
-	e := go_json_rules_engine.NewEngine()
+	eng := go_json_rules_engine.NewEngine()
 
-	// Register custom operators
-	err := e.RegisterCustomOperator("divisibleBy", func(a, b interface{}) bool {
-		// Convert both values to float64
-		va := reflect.ValueOf(a)
-		vb := reflect.ValueOf(b)
-		if !e.IsNumeric(va) || !e.IsNumeric(vb) {
+	// Register a custom operator for checking if a number is divisible by another number
+	err := eng.RegisterCustomOperator("divisibleBy", func(a, b interface{}) bool {
+		// Convert both values to float64 for comparison
+		aFloat, aOk := a.(float64)
+		bFloat, bOk := b.(float64)
+		if !aOk || !bOk {
 			return false
 		}
-		aFloat := e.ToFloat64(va)
-		bFloat := e.ToFloat64(vb)
-		if bFloat == 0 {
-			return false
-		}
-		return math.Mod(aFloat, bFloat) == 0
+		return aFloat != 0 && bFloat != 0 && int(aFloat)%int(bFloat) == 0
 	})
 	if err != nil {
-		fmt.Printf("Error registering divisibleBy operator: %v\n", err)
-		return
+		panic(err)
 	}
 
-	err = e.RegisterCustomOperator("startsWith", func(a, b interface{}) bool {
-		str, ok1 := a.(string)
-		prefix, ok2 := b.(string)
-		if !ok1 || !ok2 {
+	// Register a custom operator for checking if a string contains a substring
+	err = eng.RegisterCustomOperator("containsSubstring", func(a, b interface{}) bool {
+		aStr, aOk := a.(string)
+		bStr, bOk := b.(string)
+		if !aOk || !bOk {
 			return false
 		}
-		return strings.HasPrefix(str, prefix)
+		return len(bStr) > 0 && len(aStr) >= len(bStr) && aStr != "" && bStr != ""
 	})
 	if err != nil {
-		fmt.Printf("Error registering startsWith operator: %v\n", err)
-		return
+		panic(err)
 	}
 
-	err = e.RegisterCustomOperator("olderThan", func(a, b interface{}) bool {
-		// Convert age to float64
-		va := reflect.ValueOf(a)
-		if !e.IsNumeric(va) {
-			return false
-		}
-		age := e.ToFloat64(va)
+	// Create rules container
+	rules := go_json_rules_engine.NewRules()
 
-		// Convert years to float64
-		vb := reflect.ValueOf(b)
-		if !e.IsNumeric(vb) {
-			return false
-		}
-		years := e.ToFloat64(vb)
-
-		return age > years
-	})
-	if err != nil {
-		fmt.Printf("Error registering olderThan operator: %v\n", err)
-		return
-	}
-
-	err = e.RegisterCustomOperator("isWeekend", func(a, _ interface{}) bool {
-		date, ok := a.(time.Time)
-		if !ok {
-			return false
-		}
-		return date.Weekday() == time.Saturday || date.Weekday() == time.Sunday
-	})
-	if err != nil {
-		fmt.Printf("Error registering isWeekend operator: %v\n", err)
-		return
-	}
-
-	// Create rules using custom operators
-	rules := []go_json_rules_engine.Rule{
+	// Load rules from JSON string
+	jsonStr := `[
 		{
-			ID:       "age-rule",
-			Name:     "Age Check Rule",
-			Priority: 1,
-			Conditions: go_json_rules_engine.ConditionGroup{
-				Operator: go_json_rules_engine.And,
-				Conditions: []interface{}{
-					go_json_rules_engine.Condition{
-						Fact:     "age",
-						Operator: "divisibleBy",
-						Value:    5,
-					},
-					go_json_rules_engine.Condition{
-						Fact:     "age",
-						Operator: "olderThan",
-						Value:    18,
-					},
-				},
+			"id": "divisible-check",
+			"name": "Divisible Check",
+			"priority": 1,
+			"conditions": {
+				"operator": "and",
+				"conditions": [
+					{
+						"fact": "number",
+						"operator": "divisibleBy",
+						"value": 5
+					}
+				]
 			},
-			Event: go_json_rules_engine.Event{
-				Type: "ageRuleMatched",
-				Params: map[string]interface{}{
-					"message": "Age requirements met!",
-				},
-			},
+			"event": {
+				"type": "divisible",
+				"params": {
+					"message": "Number is divisible by 5"
+				}
+			}
 		},
 		{
-			ID:       "name-rule",
-			Name:     "Name Check Rule",
-			Priority: 2,
-			Conditions: go_json_rules_engine.ConditionGroup{
-				Operator: go_json_rules_engine.And,
-				Conditions: []interface{}{
-					go_json_rules_engine.Condition{
-						Fact:     "name",
-						Operator: "startsWith",
-						Value:    "John",
-					},
-				},
+			"id": "substring-check",
+			"name": "Substring Check",
+			"priority": 2,
+			"conditions": {
+				"operator": "and",
+				"conditions": [
+					{
+						"fact": "text",
+						"operator": "containsSubstring",
+						"value": "hello"
+					}
+				]
 			},
-			Event: go_json_rules_engine.Event{
-				Type: "nameRuleMatched",
-				Params: map[string]interface{}{
-					"message": "Name starts with John!",
-				},
-			},
-		},
-		{
-			ID:       "weekend-rule",
-			Name:     "Weekend Check Rule",
-			Priority: 3,
-			Conditions: go_json_rules_engine.ConditionGroup{
-				Operator: go_json_rules_engine.And,
-				Conditions: []interface{}{
-					go_json_rules_engine.Condition{
-						Fact:     "date",
-						Operator: "isWeekend",
-						Value:    nil, // Value is not used for this operator
-					},
-				},
-			},
-			Event: go_json_rules_engine.Event{
-				Type: "weekendRuleMatched",
-				Params: map[string]interface{}{
-					"message": "It's the weekend!",
-				},
-			},
-		},
-	}
-
-	// Add rules to the engine
-	for _, rule := range rules {
-		if err := e.AddRule(rule); err != nil {
-			fmt.Printf("Error adding rule: %v\n", err)
-			return
+			"event": {
+				"type": "contains",
+				"params": {
+					"message": "Text contains the substring"
+				}
+			}
 		}
+	]`
+
+	if err := rules.LoadRulesFromJSONString(jsonStr); err != nil {
+		panic(err)
 	}
 
 	// Test cases
 	testCases := []map[string]interface{}{
 		{
-			"age":  25,                                          // divisible by 5 and > 18
-			"name": "John Doe",                                  // starts with "John"
-			"date": time.Date(2024, 3, 9, 0, 0, 0, 0, time.UTC), // Saturday
+			"number": 10.0,
+			"text":   "hello world",
 		},
 		{
-			"age":  16,                                          // not divisible by 5 and < 18
-			"name": "John Smith",                                // starts with "John"
-			"date": time.Date(2024, 3, 8, 0, 0, 0, 0, time.UTC), // Friday
+			"number": 7.0,
+			"text":   "goodbye world",
 		},
 		{
-			"age":  30,                                           // divisible by 5 and > 18
-			"name": "Jane Doe",                                   // doesn't start with "John"
-			"date": time.Date(2024, 3, 10, 0, 0, 0, 0, time.UTC), // Sunday
+			"number": 15.0,
+			"text":   "hello there",
 		},
 	}
 
-	// Evaluate each test case
 	for i, facts := range testCases {
-		events, err := e.Evaluate(facts)
+		fmt.Printf("\nTesting Case %d:\n", i+1)
+		events, err := eng.Evaluate(rules.GetRules(), facts)
 		if err != nil {
-			fmt.Printf("Error evaluating facts: %v\n", err)
-			continue
+			panic(err)
 		}
 
-		fmt.Printf("\nTest Case %d:\n", i+1)
-		fmt.Printf("Facts: %+v\n", facts)
 		if len(events) > 0 {
-			fmt.Printf("Matched Events: %+v\n", events)
+			for _, event := range events {
+				fmt.Printf("Rule triggered: %s\n", event.Type)
+				fmt.Printf("Message: %s\n", event.Params["message"])
+			}
 		} else {
-			fmt.Println("No rules matched")
+			fmt.Printf("No rules triggered\n")
 		}
 	}
 }

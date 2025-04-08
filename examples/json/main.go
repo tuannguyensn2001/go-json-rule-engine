@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/tuannguyensn2001/go-json-rule-engine"
+
+	go_json_rules_engine "github.com/tuannguyensn2001/go-json-rule-engine"
 )
 
 func main() {
@@ -67,8 +69,15 @@ func main() {
         }
     ]`
 
-	if err := eng.LoadRulesFromJSONString(jsonStr); err != nil {
+	var ruleOptions []go_json_rules_engine.RuleOption
+	if err := json.Unmarshal([]byte(jsonStr), &ruleOptions); err != nil {
 		panic(err)
+	}
+
+	// Create rules container and add rules
+	rules := go_json_rules_engine.NewRules()
+	for _, rule := range ruleOptions {
+		rules.AddRule(rule)
 	}
 
 	// Evaluate facts for VIP customer
@@ -79,7 +88,7 @@ func main() {
 		"firstPurchase":   false,
 	}
 
-	events, err := eng.Evaluate(vipFacts)
+	events, err := eng.Evaluate(rules.GetRules(), vipFacts)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +111,7 @@ func main() {
 		"firstPurchase":   true,
 	}
 
-	events, err = eng.Evaluate(newCustomerFacts)
+	events, err = eng.Evaluate(rules.GetRules(), newCustomerFacts)
 	if err != nil {
 		panic(err)
 	}

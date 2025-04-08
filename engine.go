@@ -1,17 +1,13 @@
 package go_json_rules_engine
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"reflect"
 	"regexp"
-	"sort"
 	"sync"
 )
 
 type Engine struct {
-	rules           []Rule
 	customOperators map[Operator]CustomOperatorFunc
 	mu              sync.RWMutex
 }
@@ -20,7 +16,6 @@ type CustomOperatorFunc func(a, b interface{}) bool
 
 func NewEngine() *Engine {
 	return &Engine{
-		rules:           make([]Rule, 0),
 		customOperators: make(map[Operator]CustomOperatorFunc),
 	}
 }
@@ -43,55 +38,10 @@ func (e *Engine) UnregisterCustomOperator(op Operator) {
 	delete(e.customOperators, op)
 }
 
-func (e *Engine) AddRule(rule Rule) error {
-	e.rules = append(e.rules, rule)
-	e.sortRulesByPriority()
-	return nil
-}
-
-func (e *Engine) LoadRulesFromJSON(filename string) error {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to read rules file: %w", err)
-	}
-
-	return e.LoadRulesFromJSONString(string(data))
-}
-
-func (e *Engine) LoadRulesFromJSONString(jsonStr string) error {
-	var rules []Rule
-	if err := json.Unmarshal([]byte(jsonStr), &rules); err != nil {
-		return fmt.Errorf("failed to parse rules: %w", err)
-	}
-
-	e.rules = rules
-	e.sortRulesByPriority()
-	return nil
-}
-
-func (e *Engine) SaveRulesToJSON(filename string) error {
-	data, err := json.MarshalIndent(e.rules, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal rules: %w", err)
-	}
-
-	if err := ioutil.WriteFile(filename, data, 0644); err != nil {
-		return fmt.Errorf("failed to write rules file: %w", err)
-	}
-
-	return nil
-}
-
-func (e *Engine) sortRulesByPriority() {
-	sort.Slice(e.rules, func(i, j int) bool {
-		return e.rules[i].Priority > e.rules[j].Priority
-	})
-}
-
-func (e *Engine) Evaluate(facts map[string]interface{}) ([]Event, error) {
+func (e *Engine) Evaluate(rules []RuleOption, facts map[string]interface{}) ([]Event, error) {
 	var events []Event
 
-	for _, rule := range e.rules {
+	for _, rule := range rules {
 		if e.evaluateConditionGroup(rule.Conditions, facts) {
 			events = append(events, rule.Event)
 		}
