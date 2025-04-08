@@ -7,18 +7,42 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"sync"
 
 	"github.com/tuannguyensn2001/go-json-rule-engine/pkg/types"
 )
 
 type Engine struct {
-	rules []types.Rule
+	rules           []types.Rule
+	customOperators map[types.Operator]CustomOperatorFunc
+	mu              sync.RWMutex
 }
+
+type CustomOperatorFunc func(a, b interface{}) bool
 
 func NewEngine() *Engine {
 	return &Engine{
-		rules: make([]types.Rule, 0),
+		rules:           make([]types.Rule, 0),
+		customOperators: make(map[types.Operator]CustomOperatorFunc),
 	}
+}
+
+func (e *Engine) RegisterCustomOperator(op types.Operator, fn CustomOperatorFunc) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, exists := e.customOperators[op]; exists {
+		return fmt.Errorf("operator %s is already registered", op)
+	}
+
+	e.customOperators[op] = fn
+	return nil
+}
+
+func (e *Engine) UnregisterCustomOperator(op types.Operator) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	delete(e.customOperators, op)
 }
 
 func (e *Engine) AddRule(rule types.Rule) error {
@@ -125,6 +149,16 @@ func (e *Engine) evaluateCondition(condition types.Condition, facts map[string]i
 		return false
 	}
 
+	// Check for custom operator first
+	e.mu.RLock()
+	customFn, isCustom := e.customOperators[condition.Operator]
+	e.mu.RUnlock()
+
+	if isCustom {
+		return customFn(factValue, condition.Value)
+	}
+
+	// Handle built-in operators
 	switch condition.Operator {
 	case types.Equal:
 		return e.compareEqual(factValue, condition.Value)
@@ -165,7 +199,7 @@ func (e *Engine) compareEqual(a, b interface{}) bool {
 	vb := reflect.ValueOf(b)
 
 	// Handle numeric types
-	if e.isNumeric(va) && e.isNumeric(vb) {
+	if e.IsNumeric(va) && e.IsNumeric(vb) {
 		return e.compareNumeric(va, vb) == 0
 	}
 
@@ -188,7 +222,7 @@ func (e *Engine) compareGreaterThan(a, b interface{}) bool {
 	vb := reflect.ValueOf(b)
 
 	// Only handle numeric types
-	if e.isNumeric(va) && e.isNumeric(vb) {
+	if e.IsNumeric(va) && e.IsNumeric(vb) {
 		return e.compareNumeric(va, vb) > 0
 	}
 
@@ -200,7 +234,7 @@ func (e *Engine) compareLessThan(a, b interface{}) bool {
 	vb := reflect.ValueOf(b)
 
 	// Only handle numeric types
-	if e.isNumeric(va) && e.isNumeric(vb) {
+	if e.IsNumeric(va) && e.IsNumeric(vb) {
 		return e.compareNumeric(va, vb) < 0
 	}
 
@@ -247,7 +281,8 @@ func (e *Engine) evaluateRegex(a, pattern interface{}) bool {
 	return matched
 }
 
-func (e *Engine) isNumeric(v reflect.Value) bool {
+// IsNumeric checks if a value is any numeric type
+func (e *Engine) IsNumeric(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
@@ -258,21 +293,8 @@ func (e *Engine) isNumeric(v reflect.Value) bool {
 	}
 }
 
-func (e *Engine) compareNumeric(a, b reflect.Value) int {
-	// Convert both values to float64 for comparison
-	aFloat := e.toFloat64(a)
-	bFloat := e.toFloat64(b)
-
-	if aFloat < bFloat {
-		return -1
-	}
-	if aFloat > bFloat {
-		return 1
-	}
-	return 0
-}
-
-func (e *Engine) toFloat64(v reflect.Value) float64 {
+// ToFloat64 converts any numeric type to float64
+func (e *Engine) ToFloat64(v reflect.Value) float64 {
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return float64(v.Int())
@@ -283,4 +305,18 @@ func (e *Engine) toFloat64(v reflect.Value) float64 {
 	default:
 		return 0
 	}
+}
+
+func (e *Engine) compareNumeric(a, b reflect.Value) int {
+	// Convert both values to float64 for comparison
+	aFloat := e.ToFloat64(a)
+	bFloat := e.ToFloat64(b)
+
+	if aFloat < bFloat {
+		return -1
+	}
+	if aFloat > bFloat {
+		return 1
+	}
+	return 0
 }
